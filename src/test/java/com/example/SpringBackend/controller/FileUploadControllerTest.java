@@ -2,14 +2,18 @@ package com.example.SpringBackend.controller;
 
 import com.example.SpringBackend.Config.StorageFileNotFoundException;
 import com.example.SpringBackend.repository.StorageRepository;
+import jakarta.annotation.Resource;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Collections;
 
@@ -17,13 +21,29 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+@ExtendWith(MockitoExtension.class)
 class FileUploadControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @Mock
+    @MockitoBean
     private StorageRepository storageService;
+
+    @InjectMocks
+    private FileUploadController fileUploadController;
+
+    @BeforeEach
+    void setUp() {
+        this.storageService = Mockito.mock(StorageRepository.class);
+
+        this.fileUploadController = new FileUploadController(this.storageService);
+
+        this.mockMvc = MockMvcBuilders.standaloneSetup(fileUploadController)
+                .setControllerAdvice(fileUploadController)
+                .build();
+    }
+
 
     @Test
     void shouldListAllFiles() throws Exception {
@@ -37,16 +57,9 @@ class FileUploadControllerTest {
     }
 
     @Test
-    void shouldServeFile() throws Exception {
-        Resource mockResource = new ByteArrayResource("content".getBytes()) {
-            @Override
-            public String getFilename() {
-                return "test.txt";
-            }
-        };
-
+    void shouldServeFile(Resource mockResource) throws Exception {
         Mockito.when(storageService.loadAsResource("test.txt"))
-                .thenReturn((jakarta.annotation.Resource) mockResource);
+                .thenReturn((Resource) mockResource);
 
         mockMvc.perform(get("/files/test.txt"))
                 .andExpect(status().isOk())

@@ -1,69 +1,101 @@
 package com.example.SpringBackend.service;
 
-import java.util.Arrays;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.stream.Collectors;
 
-import org.hamcrest.Matchers;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.mock.web.MockHttpServletRequest;
 
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
+import com.example.SpringBackend.Config.StorageException;
 import com.example.SpringBackend.Config.StorageFileNotFoundException;
-import com.example.SpringBackend.repository.StorageRepository;
+import com.example.SpringBackend.Config.StorageProperties;
 
-@SpringBootTest
-@ExtendWith(MockitoExtension.class)
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 class FileUploadServiceTest {
 
-    @Autowired
-    private MockMvc mvc;
+    private FileSystemStorageService storageService;
+    @TempDir
+    Path sharedTempDir;
 
-    @MockitoBean
-    private StorageRepository storageService;
+    @BeforeEach
+    void setUp() {
+        StorageProperties properties = new StorageProperties();
+        properties.setLocation(sharedTempDir.toString());
 
-    @Test
-    void shouldListAllFiles() throws Exception {
-        given(this.storageService.loadAllDownloadUrls())
-                .willReturn(Arrays.asList("http://localhost/files/first.txt", "http://localhost/files/second.txt"));
+        storageService = new FileSystemStorageService(properties);
+        storageService.init();
 
-        this.mvc.perform(get("/"))
-                .andExpect(status().isOk())
-                .andExpect(model().attribute("files",
-                        Matchers.contains("http://localhost/files/first.txt",
-                                "http://localhost/files/second.txt")));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
     }
 
     @Test
-    public void shouldSaveUploadedFile() throws Exception {
-        MockMultipartFile multipartFile = new MockMultipartFile("file", "test.txt",
-                "text/plain", "Spring Framework".getBytes());
+    void shouldSaveUploadedFile() throws IOException {
+        MockMultipartFile multipartFile = new MockMultipartFile(
+                "file",
+                "test.txt",
+                "text/plain",
+                "Spring Framework".getBytes()
+        );
 
-        this.mvc.perform(multipart("/").file(multipartFile))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(header().string("Location", "/"));
+        storageService.store(multipartFile);
 
-        then(this.storageService).should().store(multipartFile);
+        Path uploadedFile = sharedTempDir.resolve("test.txt");
+        assertThat(Files.exists(uploadedFile)).isTrue();
+        assertThat(Files.readString(uploadedFile)).isEqualTo("Spring Framework");
     }
 
     @Test
-    public void should404WhenFileNotFound() throws Exception {
-        given(this.storageService.loadAsResource("test.txt"))
-                .willThrow(StorageFileNotFoundException.class);
+    void shouldThrowExceptionWhenFileIsEmpty() {
+        MockMultipartFile emptyFile = new MockMultipartFile("file", "empty.txt", "text/plain", new byte[0]);
 
-        this.mvc.perform(get("/files/test.txt"))
-                .andExpect(status().isNotFound());
+        assertThatThrownBy(() -> storageService.store(emptyFile))
+                .isInstanceOf(StorageException.class)
+                .hasMessageContaining("Failed to store empty file");
+    }
+
+    @Test
+    void shouldThrowExceptionForRelativePathAttack() {
+        MockMultipartFile maliciousFile = new MockMultipartFile(
+                "file",
+                "../malicious.txt",
+                "text/plain",
+                "attack".getBytes()
+        );
+
+        assertThatThrownBy(() -> storageService.store(maliciousFile))
+                .isInstanceOf(StorageException.class)
+                .hasMessageContaining("Cannot store file outside current directory");
+    }
+
+    @Test
+    void shouldListAllFilesAndUrls() throws IOException {
+        Files.writeString(sharedTempDir.resolve("first.txt"), "first");
+        Files.writeString(sharedTempDir.resolve("second.txt"), "second");
+
+        List<Path> files = storageService.loadAll().collect(Collectors.toList());
+        assertThat(files).containsExactlyInAnyOrder(Path.of("first.txt"), Path.of("second.txt"));
+
+        List<String> urls = storageService.loadAllDownloadUrls();
+        assertThat(urls).hasSize(2);
+        assertThat(urls.get(0)).contains("/files/first.txt");
+        assertThat(urls.get(1)).contains("/files/second.txt");
+    }
+
+    @Test
+    void shouldThrow404WhenFileNotFound() {
+        assertThatThrownBy(() -> storageService.loadAsResource("non-existent.txt"))
+                .isInstanceOf(StorageFileNotFoundException.class)
+                .hasMessageContaining("Could not read file: non-existent.txt");
     }
 }
