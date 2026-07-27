@@ -1,4 +1,4 @@
-package com.example.SpringBackend.Config;
+package com.example.SpringBackend.exception;
 
 import org.springframework.web.bind.annotation.ControllerAdvice;
 

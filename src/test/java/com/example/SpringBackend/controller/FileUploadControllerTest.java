@@ -1,8 +1,7 @@
 package com.example.SpringBackend.controller;
 
-import com.example.SpringBackend.Config.StorageFileNotFoundException;
-import com.example.SpringBackend.repository.StorageRepository;
-import jakarta.annotation.Resource;
+import com.example.SpringBackend.exception.StorageFileNotFoundException;
+import com.example.SpringBackend.service.FileSystemStorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,16 +27,16 @@ class FileUploadControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private StorageRepository storageService;
+    private FileSystemStorageService storageService;
 
     @InjectMocks
     private FileUploadController fileUploadController;
 
     @BeforeEach
     void setUp() {
-        this.storageService = Mockito.mock(StorageRepository.class);
+        this.storageService = Mockito.mock(FileSystemStorageService.class);
 
-        this.fileUploadController = new FileUploadController(this.storageService);
+        this.fileUploadController = new FileUploadController((FileSystemStorageService) this.storageService);
 
         this.mockMvc = MockMvcBuilders.standaloneSetup(fileUploadController)
                 .setControllerAdvice(fileUploadController)
@@ -57,14 +56,24 @@ class FileUploadControllerTest {
     }
 
     @Test
-    void shouldServeFile(Resource mockResource) throws Exception {
+    void shouldServeFile() throws Exception {
+        String fileContent = "content";
+
+        org.springframework.core.io.Resource mockResource =
+                new org.springframework.core.io.ByteArrayResource(fileContent.getBytes()) {
+                    @Override
+                    public String getFilename() {
+                        return "test.txt";
+                    }
+                };
+
         Mockito.when(storageService.loadAsResource("test.txt"))
-                .thenReturn((Resource) mockResource);
+                .thenReturn(mockResource);
 
         mockMvc.perform(get("/files/test.txt"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"test.txt\""))
-                .andExpect(content().bytes("content".getBytes()));
+                .andExpect(content().bytes(fileContent.getBytes()));
     }
 
     @Test

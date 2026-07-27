@@ -12,9 +12,9 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.example.SpringBackend.Config.StorageException;
-import com.example.SpringBackend.Config.StorageFileNotFoundException;
-import com.example.SpringBackend.Config.StorageProperties;
+import com.example.SpringBackend.exception.StorageException;
+import com.example.SpringBackend.exception.StorageFileNotFoundException;
+import com.example.SpringBackend.config.StorageProperties;
 import com.example.SpringBackend.controller.FileUploadController;
 import com.example.SpringBackend.repository.StorageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,13 +90,13 @@ public class FileSystemStorageService implements StorageRepository {
     }
 
     @Override
-    public jakarta.annotation.Resource loadAsResource(String filename) {
+    public Resource loadAsResource(String filename) {
         try {
             Path file = load(filename);
             Resource resource = new UrlResource(file.toUri());
 
             if (resource.exists() || resource.isReadable()) {
-                return (jakarta.annotation.Resource) resource;
+                return resource;
             } else {
                 throw new StorageFileNotFoundException("Could not read file: " + filename);
             }

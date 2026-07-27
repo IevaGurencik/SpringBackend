@@ -14,9 +14,9 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.mock.web.MockHttpServletRequest;
 
-import com.example.SpringBackend.Config.StorageException;
-import com.example.SpringBackend.Config.StorageFileNotFoundException;
-import com.example.SpringBackend.Config.StorageProperties;
+import com.example.SpringBackend.exception.StorageException;
+import com.example.SpringBackend.exception.StorageFileNotFoundException;
+import com.example.SpringBackend.config.StorageProperties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

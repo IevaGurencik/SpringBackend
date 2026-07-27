@@ -1,7 +1,7 @@
 package com.example.SpringBackend.controller;
 
-import com.example.SpringBackend.Config.StorageFileNotFoundException;
-import com.example.SpringBackend.repository.StorageRepository;
+import com.example.SpringBackend.exception.StorageFileNotFoundException;
+import com.example.SpringBackend.service.FileSystemStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -20,10 +20,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 public class FileUploadController {
 
-    private final StorageRepository storageService;
+    private final FileSystemStorageService storageService;
 
     @Autowired
-    public FileUploadController(StorageRepository storageService) {
+    public FileUploadController(FileSystemStorageService storageService) {
         this.storageService = storageService;
     }
 
@@ -36,7 +36,7 @@ public class FileUploadController {
     @GetMapping("/files/{filename:.+}")
     @ResponseBody
     public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
-        Resource file = (Resource) storageService.loadAsResource(filename);
+        Resource file = storageService.loadAsResource(filename);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getFilename() + "\"")

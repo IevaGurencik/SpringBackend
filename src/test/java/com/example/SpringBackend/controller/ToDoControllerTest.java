@@ -1,5 +1,6 @@
 package com.example.SpringBackend.controller;
 
+import com.example.SpringBackend.exception.GlobalExceptionHandler;
 import com.example.SpringBackend.model.ToDoEntity;
 import com.example.SpringBackend.service.ToDoService;
 import org.junit.jupiter.api.BeforeEach;

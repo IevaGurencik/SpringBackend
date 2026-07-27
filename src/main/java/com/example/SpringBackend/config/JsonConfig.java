@@ -1,4 +1,4 @@
-package com.example.SpringBackend.Config;
+package com.example.SpringBackend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

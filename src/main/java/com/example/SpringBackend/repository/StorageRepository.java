@@ -1,12 +1,14 @@
 package com.example.SpringBackend.repository;
 
-import jakarta.annotation.Resource;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Repository;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 
+@Repository
 public interface StorageRepository {
 
     void init();
