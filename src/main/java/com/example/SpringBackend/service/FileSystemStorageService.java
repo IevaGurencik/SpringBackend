@@ -17,7 +17,6 @@ import com.example.SpringBackend.exception.StorageFileNotFoundException;
 import com.example.SpringBackend.config.StorageProperties;
 import com.example.SpringBackend.controller.FileUploadController;
 import com.example.SpringBackend.repository.StorageRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
@@ -26,11 +25,11 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
 @Service
-public class FileSystemStorageService implements StorageRepository {
+public class FileSystemStorageService{
 
+    private StorageRepository storageRepository;
     private final Path rootLocation;
 
-    @Autowired
     public FileSystemStorageService(StorageProperties properties) {
         if (properties.getLocation().trim().isEmpty()) {
             throw new StorageException("File upload location cannot be empty.");
@@ -38,7 +37,7 @@ public class FileSystemStorageService implements StorageRepository {
         this.rootLocation = Paths.get(properties.getLocation());
     }
 
-    @Override
+
     public void store(MultipartFile file) {
         if (file.isEmpty()) {
             throw new StorageException("Failed to store empty file.");
@@ -59,7 +58,7 @@ public class FileSystemStorageService implements StorageRepository {
         }
     }
 
-    @Override
+
     public Stream<Path> loadAll() {
         try {
             return Files.walk(this.rootLocation, 1)
@@ -70,7 +69,7 @@ public class FileSystemStorageService implements StorageRepository {
         }
     }
 
-    @Override
+
     public List<String> loadAllDownloadUrls() {
         try {
             return Files.walk(this.rootLocation, 1)
@@ -84,12 +83,12 @@ public class FileSystemStorageService implements StorageRepository {
         }
     }
 
-    @Override
+
     public Path load(String filename) {
         return rootLocation.resolve(filename);
     }
 
-    @Override
+
     public Resource loadAsResource(String filename) {
         try {
             Path file = load(filename);
@@ -105,12 +104,12 @@ public class FileSystemStorageService implements StorageRepository {
         }
     }
 
-    @Override
+
     public void deleteAll() {
         FileSystemUtils.deleteRecursively(rootLocation.toFile());
     }
 
-    @Override
+
     public void init() {
         try {
             Files.createDirectories(rootLocation);

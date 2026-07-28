@@ -47,9 +47,9 @@ class FileUploadControllerTest {
     @Test
     void shouldListAllFiles() throws Exception {
         Mockito.when(storageService.loadAllDownloadUrls())
-                .thenReturn(Collections.singletonList("http://localhost:8080/files/test.txt"));
+                .thenReturn(Collections.singletonList("http://localhost:8080/api/files/test.txt"));
 
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/api/files"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("uploadForm"))
                 .andExpect(model().attributeExists("files"));
@@ -70,7 +70,7 @@ class FileUploadControllerTest {
         Mockito.when(storageService.loadAsResource("test.txt"))
                 .thenReturn(mockResource);
 
-        mockMvc.perform(get("/files/test.txt"))
+        mockMvc.perform(get("/api/files/test.txt"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"test.txt\""))
                 .andExpect(content().bytes(fileContent.getBytes()));
@@ -85,7 +85,7 @@ class FileUploadControllerTest {
                 "hello world".getBytes()
         );
 
-        mockMvc.perform(multipart("/").file(mockFile))
+        mockMvc.perform(multipart("/api/files").file(mockFile))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/"))
                 .andExpect(flash().attribute("message", "You successfully uploaded test.txt!"));
@@ -98,7 +98,7 @@ class FileUploadControllerTest {
         Mockito.when(storageService.loadAsResource("missing.txt"))
                 .thenThrow(new StorageFileNotFoundException("File not found"));
 
-        mockMvc.perform(get("/files/missing.txt"))
+        mockMvc.perform(get("/api/files/missing.txt"))
                 .andExpect(status().isNotFound());
     }
 }
