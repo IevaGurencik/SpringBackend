@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -25,7 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
 @Service
-public class FileSystemStorageService{
+public class FileSystemStorageService {
 
     private StorageRepository storageRepository;
     private final Path rootLocation;
@@ -37,6 +38,15 @@ public class FileSystemStorageService{
         this.rootLocation = Paths.get(properties.getLocation());
     }
 
+    public void store(MultipartFile[] files) {
+        if (files == null || files.length == 0) {
+            throw new StorageException("No files provided for upload.");
+        }
+
+        Arrays.stream(files)
+                .filter(file -> !file.isEmpty())
+                .forEach(this::store);
+    }
 
     public void store(MultipartFile file) {
         if (file.isEmpty()) {
@@ -58,7 +68,6 @@ public class FileSystemStorageService{
         }
     }
 
-
     public Stream<Path> loadAll() {
         try {
             return Files.walk(this.rootLocation, 1)
@@ -68,7 +77,6 @@ public class FileSystemStorageService{
             throw new StorageException("Failed to read stored files", e);
         }
     }
-
 
     public List<String> loadAllDownloadUrls() {
         try {
@@ -83,11 +91,9 @@ public class FileSystemStorageService{
         }
     }
 
-
     public Path load(String filename) {
         return rootLocation.resolve(filename);
     }
-
 
     public Resource loadAsResource(String filename) {
         try {
@@ -104,11 +110,9 @@ public class FileSystemStorageService{
         }
     }
 
-
     public void deleteAll() {
         FileSystemUtils.deleteRecursively(rootLocation.toFile());
     }
-
 
     public void init() {
         try {

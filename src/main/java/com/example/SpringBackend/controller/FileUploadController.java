@@ -5,20 +5,12 @@ import com.example.SpringBackend.service.FileSystemStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.core.io.Resource;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.List;
 
 @CrossOrigin(origins = "http://localhost:3000")
 @RestController
@@ -33,9 +25,9 @@ public class FileUploadController {
     }
 
     @GetMapping("/files")
-    public String listUploadedFiles(Model model) {
-        model.addAttribute("files", storageService.loadAllDownloadUrls());
-        return "uploadForm";
+    @ResponseBody
+    public List<String> listUploadedFiles() {
+        return storageService.loadAllDownloadUrls();
     }
 
     @GetMapping("/files/{filename:.+}")
@@ -49,13 +41,15 @@ public class FileUploadController {
     }
 
     @PostMapping("/files")
-    public String handleFileUpload(@RequestParam("file") MultipartFile file,
-                                   RedirectAttributes redirectAttributes) {
-        storageService.store(file);
+    public ResponseEntity<Void> handleFileUpload(@RequestParam("files") MultipartFile[] files,
+                                                 RedirectAttributes redirectAttributes) {
+        storageService.store(files);
         redirectAttributes.addFlashAttribute("message",
-                "You successfully uploaded " + file.getOriginalFilename() + "!");
+                "You successfully uploaded " + files.length + " files!");
 
-        return "redirect:/";
+        return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
+                .header(org.springframework.http.HttpHeaders.LOCATION, "/api/files")
+                .build();
     }
 
     @ExceptionHandler(StorageFileNotFoundException.class)
