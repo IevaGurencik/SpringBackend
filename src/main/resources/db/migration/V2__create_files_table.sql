@@ -1,0 +1,7 @@
+CREATE TABLE file_metadata (
+    id BIGSERIAL PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL UNIQUE,
+    download_url VARCHAR(512) NOT NULL,
+    upload_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    file_size_bytes BIGINT NOT NULL
+);

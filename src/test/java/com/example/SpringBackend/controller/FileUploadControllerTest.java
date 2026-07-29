@@ -13,6 +13,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Collections;
 
@@ -51,8 +52,7 @@ class FileUploadControllerTest {
 
         mockMvc.perform(get("/api/files"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("uploadForm"))
-                .andExpect(model().attributeExists("files"));
+                .andExpect(jsonPath("$[0]").value("http://localhost:8080/api/files/test.txt"));
     }
 
     @Test
@@ -78,19 +78,27 @@ class FileUploadControllerTest {
 
     @Test
     void shouldHandleFileUpload() throws Exception {
-        MockMultipartFile mockFile = new MockMultipartFile(
-                "file",
-                "test.txt",
+        MockMultipartFile mockFile1 = new MockMultipartFile(
+                "files",
+                "test1.txt",
                 "text/plain",
-                "hello world".getBytes()
+                "hello world 1".getBytes()
+        );
+        MockMultipartFile mockFile2 = new MockMultipartFile(
+                "files",
+                "test2.txt",
+                "text/plain",
+                "hello world 2".getBytes()
         );
 
-        mockMvc.perform(multipart("/api/files").file(mockFile))
+        mockMvc.perform(multipart("/api/files")
+                        .file(mockFile1)
+                        .file(mockFile2))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/"))
-                .andExpect(flash().attribute("message", "You successfully uploaded test.txt!"));
+                .andExpect(redirectedUrl("/api/files"))
+                .andExpect(flash().attribute("message", "You successfully uploaded 2 files!"));
 
-        Mockito.verify(storageService, Mockito.times(1)).store(mockFile);
+        Mockito.verify(storageService, Mockito.times(1)).store(Mockito.any(MultipartFile[].class));
     }
 
     @Test
