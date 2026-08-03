@@ -1,15 +1,13 @@
 package com.example.SpringBackend.controller;
 
-import com.example.SpringBackend.model.LoginEntity;
 import com.example.SpringBackend.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
-
 
 @RestController
 public class AuthController {
@@ -22,11 +20,11 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<Void> login(
-            @RequestBody LoginEntity request,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
 
-        if (!authService.login(request, httpRequest, httpResponse)) {
+        if (!authService.loginWithBasicAuth(authHeader, httpRequest, httpResponse)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 

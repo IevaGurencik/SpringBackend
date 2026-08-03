@@ -1,6 +1,5 @@
 package com.example.SpringBackend.service;
 
-import com.example.SpringBackend.model.LoginEntity;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +11,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 
 @Service
@@ -29,29 +30,41 @@ public class AuthService {
         this.securityContextRepository = securityContextRepository;
     }
 
-    public boolean login(
-            LoginEntity request,
-            HttpServletRequest httpRequest,
-            HttpServletResponse httpResponse) {
+    public boolean loginWithBasicAuth(String authHeader, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 
-        if (!username.equals(request.getUsername())
-                || !password.equals(request.getPassword())) {
+        if (authHeader == null || !authHeader.startsWith("Basic ")) {
             return false;
         }
 
-        Authentication authentication =
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
-                        null,
-                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
-                );
+        try {
+            String base64Credentials = authHeader.substring(6);
+            byte[] decoded = Base64.getDecoder().decode(base64Credentials);
+            String credentials = new String(decoded, StandardCharsets.UTF_8);
 
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(authentication);
+            String[] values = credentials.split(":", 2);
+            if (values.length != 2) {
+                return false;
+            }
 
-        SecurityContextHolder.setContext(context);
-        securityContextRepository.saveContext(context, httpRequest, httpResponse);
+            String inputUsername = values[0];
+            String inputPassword = values[1];
 
-        return true;
+            if (!username.equals(inputUsername) || !password.equals(inputPassword)) {
+                return false;
+            }
+
+            Authentication authentication = new UsernamePasswordAuthenticationToken(inputUsername, null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(authentication);
+
+            SecurityContextHolder.setContext(context);
+            securityContextRepository.saveContext(context, httpRequest, httpResponse);
+
+            return true;
+
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 }
