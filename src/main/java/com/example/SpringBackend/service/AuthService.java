@@ -15,14 +15,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 
+
 @Service
 public class AuthService {
 
     @Value("${ADMIN_USERNAME}")
-    private String username;
+    private String adminUsername;
 
     @Value("${ADMIN_PASSWORD}")
-    private String password;
+    private String adminPassword;
 
     private final SecurityContextRepository securityContextRepository;
 
@@ -31,7 +32,6 @@ public class AuthService {
     }
 
     public boolean loginWithBasicAuth(String authHeader, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
-
         if (authHeader == null || !authHeader.startsWith("Basic ")) {
             return false;
         }
@@ -49,16 +49,22 @@ public class AuthService {
             String inputUsername = values[0];
             String inputPassword = values[1];
 
-            if (!username.equals(inputUsername) || !password.equals(inputPassword)) {
+            if (adminUsername == null || adminPassword == null ||
+                    !adminUsername.trim().equals(inputUsername.trim()) ||
+                    !adminPassword.trim().equals(inputPassword.trim())) {
                 return false;
             }
 
-            Authentication authentication = new UsernamePasswordAuthenticationToken(inputUsername, null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    inputUsername,
+                    null,
+                    List.of(new SimpleGrantedAuthority("ADMIN"))
+            );
 
             SecurityContext context = SecurityContextHolder.createEmptyContext();
             context.setAuthentication(authentication);
-
             SecurityContextHolder.setContext(context);
+
             securityContextRepository.saveContext(context, httpRequest, httpResponse);
 
             return true;
