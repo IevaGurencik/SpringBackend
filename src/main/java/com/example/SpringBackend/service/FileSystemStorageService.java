@@ -32,10 +32,6 @@ public class FileSystemStorageService {
     private StorageRepository storageRepository;
     private final Path rootLocation;
 
-    public static List<FileMetadataEntity> findByTodoId(Long todoId) {
-        return storageRepository.findByTodoId(todoId);
-    }
-
     public FileSystemStorageService(StorageProperties properties) {
         if (properties.getLocation().trim().isEmpty()) {
             throw new StorageException("File upload location cannot be empty.");
