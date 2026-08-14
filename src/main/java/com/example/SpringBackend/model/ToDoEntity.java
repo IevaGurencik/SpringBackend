@@ -5,7 +5,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "to_do_entity")
@@ -16,6 +20,9 @@ public class ToDoEntity {
 
     @Column(name = "text", length = 255)
     private String text;
+
+    @OneToMany(mappedBy = "task")
+    private List<FileMetadataEntity> files = new ArrayList<>();
 
     public ToDoEntity(long id, String text) {
         this.id = id;

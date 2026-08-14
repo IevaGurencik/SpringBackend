@@ -17,6 +17,7 @@ import com.example.SpringBackend.exception.StorageException;
 import com.example.SpringBackend.exception.StorageFileNotFoundException;
 import com.example.SpringBackend.config.StorageProperties;
 import com.example.SpringBackend.controller.FileUploadController;
+import com.example.SpringBackend.model.FileMetadataEntity;
 import com.example.SpringBackend.repository.StorageRepository;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -30,6 +31,10 @@ public class FileSystemStorageService {
 
     private StorageRepository storageRepository;
     private final Path rootLocation;
+
+    public static List<FileMetadataEntity> findByTodoId(Long todoId) {
+        return storageRepository.findByTodoId(todoId);
+    }
 
     public FileSystemStorageService(StorageProperties properties) {
         if (properties.getLocation().trim().isEmpty()) {

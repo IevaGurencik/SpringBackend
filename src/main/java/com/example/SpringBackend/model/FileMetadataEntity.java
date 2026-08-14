@@ -5,6 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
@@ -19,21 +21,13 @@ public class FileMetadataEntity {
     @Column(name = "filename", nullable = false, unique = true, length = 255)
     private String filename;
 
-    @Column(name = "download_url", nullable = false, length = 512)
-    private String downloadUrl;
-
-    @Column(name = "upload_time", nullable = false, insertable = false, updatable = false)
-    private LocalDateTime uploadTime = LocalDateTime.now();
-
-    @Column(name = "file_size_bytes", nullable = false)
-    private Long fileSizeBytes;
+    @ManyToOne
+    @JoinColumn(name = "todo_id")
+    private ToDoEntity todo;
 
     public FileMetadataEntity(Long id, String filename, String downloadUrl, LocalDateTime uploadTime, Long fileSizeBytes) {
         this.id = id;
         this.filename = filename;
-        this.downloadUrl = downloadUrl;
-        this.uploadTime = uploadTime;
-        this.fileSizeBytes = fileSizeBytes;
     }
 
     public FileMetadataEntity() {
@@ -55,38 +49,11 @@ public class FileMetadataEntity {
         this.filename = filename;
     }
 
-    public String getDownloadUrl() {
-        return downloadUrl;
-    }
-
-    public void setDownloadUrl(String downloadUrl) {
-        this.downloadUrl = downloadUrl;
-    }
-
-    public LocalDateTime getUploadTime() {
-        return uploadTime;
-    }
-
-    public void setUploadTime(LocalDateTime uploadTime) {
-        this.uploadTime = uploadTime;
-    }
-
-    public Long getFileSizeBytes() {
-        return fileSizeBytes;
-    }
-
-    public void setFileSizeBytes(Long fileSizeBytes) {
-        this.fileSizeBytes = fileSizeBytes;
-    }
-
     @Override
     public String toString() {
         return "FileMetadataEntity{" +
                 "id=" + id +
                 ", filename='" + filename + '\'' +
-                ", downloadUrl='" + downloadUrl + '\'' +
-                ", uploadTime=" + uploadTime +
-                ", fileSizeBytes=" + fileSizeBytes +
                 '}';
     }
 }

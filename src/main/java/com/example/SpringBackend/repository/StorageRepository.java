@@ -1,5 +1,6 @@
 package com.example.SpringBackend.repository;
 
+import com.example.SpringBackend.model.FileMetadataEntity;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +23,8 @@ public interface StorageRepository {
     Path load(String filename);
 
     Resource loadAsResource(String filename);
+
+    List<FileMetadataEntity> findByTodoId(Long todoId);
 
     void deleteAll();
 }
