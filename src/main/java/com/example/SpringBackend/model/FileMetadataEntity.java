@@ -21,10 +21,6 @@ public class FileMetadataEntity {
     @Column(name = "filename", nullable = false, unique = true, length = 255)
     private String filename;
 
-    @ManyToOne
-    @JoinColumn(name = "todo_id")
-    private ToDoEntity todo;
-
     public FileMetadataEntity(Long id, String filename, String downloadUrl, LocalDateTime uploadTime, Long fileSizeBytes) {
         this.id = id;
         this.filename = filename;

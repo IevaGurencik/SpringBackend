@@ -1,7 +1,6 @@
 package com.example.SpringBackend.controller;
 
 import com.example.SpringBackend.exception.StorageFileNotFoundException;
-import com.example.SpringBackend.model.FileMetadataEntity;
 import com.example.SpringBackend.service.FileSystemStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -51,12 +50,6 @@ public class FileUploadController {
         return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
                 .header(org.springframework.http.HttpHeaders.LOCATION, "/api/files")
                 .build();
-    }
-
-    @GetMapping("/files/{todoId}")
-    @ResponseBody
-    public List<FileMetadataEntity> getFilesByTask(@PathVariable Long todoId) {
-        return FileSystemStorageService.findByTodoId(todoId);
     }
 
     @ExceptionHandler(StorageFileNotFoundException.class)
