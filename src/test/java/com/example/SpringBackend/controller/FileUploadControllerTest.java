@@ -9,6 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -72,7 +73,8 @@ class FileUploadControllerTest {
 
         mockMvc.perform(get("/api/files/test.txt"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Content-Disposition", "attachment; filename=\"test.txt\""))
+                .andExpect(header().string("Content-Disposition", "inline; filename=\"test.txt\""))
+                .andExpect(content().contentType(MediaType.APPLICATION_OCTET_STREAM))
                 .andExpect(content().bytes(fileContent.getBytes()));
     }
 

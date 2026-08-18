@@ -4,12 +4,15 @@ import com.example.SpringBackend.exception.StorageFileNotFoundException;
 import com.example.SpringBackend.service.FileSystemStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.core.io.Resource;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 
 @CrossOrigin(origins = "http://localhost:3000")
@@ -31,12 +34,17 @@ public class FileUploadController {
     }
 
     @GetMapping("/files/{filename:.+}")
-    @ResponseBody
     public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
         Resource file = storageService.loadAsResource(filename);
+        String contentType = "application/octet-stream";
+        try {
+            contentType = Files.probeContentType(file.getFile().toPath());
+        } catch (IOException e) {
+        }
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getFilename() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getFilename() + "\"")
+                .contentType(MediaType.parseMediaType(contentType))
                 .body(file);
     }
 

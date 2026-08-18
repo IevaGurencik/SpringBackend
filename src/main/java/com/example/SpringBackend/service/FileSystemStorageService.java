@@ -17,7 +17,6 @@ import com.example.SpringBackend.exception.StorageException;
 import com.example.SpringBackend.exception.StorageFileNotFoundException;
 import com.example.SpringBackend.config.StorageProperties;
 import com.example.SpringBackend.controller.FileUploadController;
-import com.example.SpringBackend.model.FileMetadataEntity;
 import com.example.SpringBackend.repository.StorageRepository;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
