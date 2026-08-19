@@ -1,4 +1,4 @@
 CREATE TABLE file_metadata (
     id BIGSERIAL PRIMARY KEY,
-    filename VARCHAR(255) NOT NULL UNIQUE,
+    filename VARCHAR(255) NOT NULL UNIQUE
 );
