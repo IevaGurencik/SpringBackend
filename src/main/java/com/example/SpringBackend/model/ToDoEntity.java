@@ -21,6 +21,9 @@ public class ToDoEntity {
     @Column(name = "text", length = 255)
     private String text;
 
+    @OneToMany(mappedBy = "todo")
+    private List<FileMetadataEntity> files = new ArrayList<>();
+
     public ToDoEntity(long id, String text) {
         this.id = id;
         this.text = text;
