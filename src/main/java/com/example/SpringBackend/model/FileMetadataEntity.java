@@ -1,5 +1,6 @@
 package com.example.SpringBackend.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -21,6 +22,7 @@ public class FileMetadataEntity {
 
     @ManyToOne
     @JoinColumn(name = "todo_id")
+    @JsonBackReference
     private ToDoEntity todo;
 
     public FileMetadataEntity(Long id, String filename) {
@@ -47,12 +49,22 @@ public class FileMetadataEntity {
         this.filename = filename;
     }
 
+    public ToDoEntity getTodo() {
+        return todo;
+    }
+
+    public void setTodo(ToDoEntity todo) {
+        this.todo = todo;
+    }
+
     @Override
     public String toString() {
         return "FileMetadataEntity{" +
                 "id=" + id +
                 ", filename='" + filename + '\'' +
+                ", todoId=" + (todo != null ? todo.getId() : null) +
                 '}';
     }
+
 }
 

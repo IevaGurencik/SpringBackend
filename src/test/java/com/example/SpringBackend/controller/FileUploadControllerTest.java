@@ -92,15 +92,16 @@ class FileUploadControllerTest {
                 "text/plain",
                 "hello world 2".getBytes()
         );
-
         mockMvc.perform(multipart("/api/files")
                         .file(mockFile1)
-                        .file(mockFile2))
+                        .file(mockFile2)
+                        .param("todoId", "1"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/api/files"))
                 .andExpect(flash().attribute("message", "You successfully uploaded 2 files!"));
 
-        Mockito.verify(storageService, Mockito.times(1)).store(Mockito.any(MultipartFile[].class));
+        Mockito.verify(storageService, Mockito.times(1))
+                .store(Mockito.any(MultipartFile[].class), Mockito.eq(1L));
     }
 
     @Test

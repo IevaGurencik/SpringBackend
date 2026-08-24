@@ -17,7 +17,11 @@ import com.example.SpringBackend.exception.StorageException;
 import com.example.SpringBackend.exception.StorageFileNotFoundException;
 import com.example.SpringBackend.config.StorageProperties;
 import com.example.SpringBackend.controller.FileUploadController;
+import com.example.SpringBackend.model.FileMetadataEntity;
+import com.example.SpringBackend.model.ToDoEntity;
 import com.example.SpringBackend.repository.StorageRepository;
+
+import com.example.SpringBackend.repository.ToDoRepository;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
@@ -27,25 +31,40 @@ import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBui
 
 @Service
 public class FileSystemStorageService {
-
-    private StorageRepository storageRepository;
+    private final StorageRepository storageRepository;
+    private final ToDoRepository todoRepository;
     private final Path rootLocation;
 
-    public FileSystemStorageService(StorageProperties properties) {
+    public FileSystemStorageService(StorageProperties properties,
+                                    StorageRepository storageRepository,
+                                    ToDoRepository todoRepository) {
         if (properties.getLocation().trim().isEmpty()) {
             throw new StorageException("File upload location cannot be empty.");
         }
         this.rootLocation = Paths.get(properties.getLocation());
+        this.storageRepository = storageRepository;
+        this.todoRepository = todoRepository;
     }
 
-    public void store(MultipartFile[] files) {
+    public void store(MultipartFile[] files, Long todoId) {
         if (files == null || files.length == 0) {
             throw new StorageException("No files provided for upload.");
         }
 
+        ToDoEntity todo = new ToDoEntity();
+        todo.setId(todoId);
+
         Arrays.stream(files)
                 .filter(file -> !file.isEmpty())
-                .forEach(this::store);
+                .forEach(file -> {
+                    this.store(file);
+
+                    FileMetadataEntity metadata = new FileMetadataEntity();
+                    metadata.setFilename(file.getOriginalFilename());
+                    metadata.setTodo(todo);
+
+                    storageRepository.save(metadata);
+                });
     }
 
     public void store(MultipartFile file) {

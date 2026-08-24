@@ -8,7 +8,10 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -17,13 +20,23 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import com.example.SpringBackend.exception.StorageException;
 import com.example.SpringBackend.exception.StorageFileNotFoundException;
 import com.example.SpringBackend.config.StorageProperties;
+import com.example.SpringBackend.repository.StorageRepository;
+import com.example.SpringBackend.repository.ToDoRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@ExtendWith(MockitoExtension.class)
 class FileUploadServiceTest {
 
     private FileSystemStorageService storageService;
+
+    @Mock
+    private StorageRepository storageRepository;
+
+    @Mock
+    private ToDoRepository todoRepository;
+
     @TempDir
     Path sharedTempDir;
 
@@ -32,7 +45,7 @@ class FileUploadServiceTest {
         StorageProperties properties = new StorageProperties();
         properties.setLocation(sharedTempDir.toString());
 
-        storageService = new FileSystemStorageService(properties);
+        storageService = new FileSystemStorageService(properties, storageRepository, todoRepository);
         storageService.init();
 
         MockHttpServletRequest request = new MockHttpServletRequest();

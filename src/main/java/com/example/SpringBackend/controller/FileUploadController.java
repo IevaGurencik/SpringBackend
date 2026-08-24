@@ -50,8 +50,10 @@ public class FileUploadController {
 
     @PostMapping("/files")
     public ResponseEntity<Void> handleFileUpload(@RequestParam("files") MultipartFile[] files,
+                                                 @RequestParam("todoId") Long todoId,
                                                  RedirectAttributes redirectAttributes) {
-        storageService.store(files);
+        storageService.store(files, todoId);
+
         redirectAttributes.addFlashAttribute("message",
                 "You successfully uploaded " + files.length + " files!");
 
