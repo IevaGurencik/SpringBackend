@@ -26,9 +26,10 @@ public class ToDoEntity {
     @JsonManagedReference
     private List<FileMetadataEntity> files = new ArrayList<>();
 
-    public ToDoEntity(long id, String text) {
+    public ToDoEntity(long id, String text, List<FileMetadataEntity> files) {
         this.id = id;
         this.text = text;
+        this.files = files;
     }
 
     public ToDoEntity() {
@@ -48,6 +49,14 @@ public class ToDoEntity {
 
     public void setText(String text) {
         this.text = text;
+    }
+
+    public List<FileMetadataEntity> getFiles() {
+        return files;
+    }
+
+    public void setFiles(List<FileMetadataEntity> files) {
+        this.files = files;
     }
 
     @Override

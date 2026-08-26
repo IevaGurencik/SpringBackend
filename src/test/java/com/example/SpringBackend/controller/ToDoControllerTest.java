@@ -1,6 +1,7 @@
 package com.example.SpringBackend.controller;
 
 import com.example.SpringBackend.exception.GlobalExceptionHandler;
+import com.example.SpringBackend.model.FileMetadataEntity;
 import com.example.SpringBackend.model.ToDoEntity;
 import com.example.SpringBackend.service.ToDoService;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,8 +10,9 @@ import org.mockito.Mockito;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -38,7 +40,11 @@ class ToDoControllerTest {
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
         objectMapper = new ObjectMapper();
-        toDoEntity = new ToDoEntity(1, "Test Text");
+
+        toDoEntity = new ToDoEntity();
+        toDoEntity.setId(1L);
+        toDoEntity.setText("Test Text");
+        toDoEntity.setFiles(new ArrayList<>());
     }
 
     @Test
@@ -47,7 +53,8 @@ class ToDoControllerTest {
         mockMvc.perform(get("/api/todos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].text").value("Test Text"));
+                .andExpect(jsonPath("$[0].text").value("Test Text"))
+                .andExpect(jsonPath("$[0].files").isArray());
     }
 
     @Test
@@ -55,7 +62,8 @@ class ToDoControllerTest {
         when(toDoService.findById(1)).thenReturn(toDoEntity);
         mockMvc.perform(get("/api/todos/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.text").value("Test Text"));
+                .andExpect(jsonPath("$.text").value("Test Text"))
+                .andExpect(jsonPath("$.files").isArray());
     }
 
     @Test
@@ -70,7 +78,10 @@ class ToDoControllerTest {
 
     @Test
     void addToDo_ReturnsSavedToDo() throws Exception {
-        ToDoEntity savedToDoEntity = new ToDoEntity(5, "New Text");
+        ToDoEntity savedToDoEntity = new ToDoEntity();
+        savedToDoEntity.setId(5L);
+        savedToDoEntity.setText("New Text");
+        savedToDoEntity.setFiles(new ArrayList<>());
 
         when(toDoService.save(any(ToDoEntity.class))).thenReturn(savedToDoEntity);
 
@@ -93,9 +104,9 @@ class ToDoControllerTest {
 
     @Test
     void deleteToDo_InvalidId_Returns404() throws Exception {
-        doThrow(new RuntimeException()).when(toDoService).deleteById(999);
+        doThrow(new RuntimeException("ToDoEntity id not found - 999")).when(toDoService).deleteById(999);
         mockMvc.perform(delete("/api/todos/999"))
                 .andExpect(status().isNotFound())
-                .andExpect(content().string(""));
+                .andExpect(content().string("ToDoEntity id not found - 999"));
     }
 }

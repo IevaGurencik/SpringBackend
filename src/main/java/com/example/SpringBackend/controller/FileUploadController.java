@@ -4,16 +4,17 @@ import com.example.SpringBackend.exception.StorageFileNotFoundException;
 import com.example.SpringBackend.service.FileSystemStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.core.io.Resource;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin(origins = "http://localhost:3000")
 @RestController
@@ -40,6 +41,7 @@ public class FileUploadController {
         try {
             contentType = Files.probeContentType(file.getFile().toPath());
         } catch (IOException e) {
+
         }
 
         return ResponseEntity.ok()
@@ -49,17 +51,14 @@ public class FileUploadController {
     }
 
     @PostMapping("/files")
-    public ResponseEntity<Void> handleFileUpload(@RequestParam("files") MultipartFile[] files,
-                                                 @RequestParam("todoId") Long todoId,
-                                                 RedirectAttributes redirectAttributes) {
+    public ResponseEntity<?> handleFileUpload(@RequestParam("files") MultipartFile[] files,
+                                              @RequestParam("todoId") Long todoId) {
         storageService.store(files, todoId);
 
-        redirectAttributes.addFlashAttribute("message",
-                "You successfully uploaded " + files.length + " files!");
-
-        return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
-                .header(org.springframework.http.HttpHeaders.LOCATION, "/api/files")
-                .build();
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "message", "Successfully uploaded " + files.length + " files!",
+                "todoId", todoId
+        ));
     }
 
     @ExceptionHandler(StorageFileNotFoundException.class)

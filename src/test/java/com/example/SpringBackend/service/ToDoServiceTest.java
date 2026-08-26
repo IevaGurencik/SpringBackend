@@ -9,6 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,7 +32,10 @@ class ToDoServiceTest {
 
     @BeforeEach
     void setUp() {
-        sampleToDoEntity = new ToDoEntity(1, "Test");
+        sampleToDoEntity = new ToDoEntity();
+        sampleToDoEntity.setId(1L);
+        sampleToDoEntity.setText("Test");
+        sampleToDoEntity.setFiles(new ArrayList<>());
     }
 
     @Test
@@ -74,5 +78,4 @@ class ToDoServiceTest {
         verify(toDoRepository, times(1)).existsById(1L);
         verify(toDoRepository, times(0)).deleteById(1L);
     }
-
 }

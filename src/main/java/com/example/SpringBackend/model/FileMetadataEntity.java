@@ -1,14 +1,7 @@
 package com.example.SpringBackend.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "file_metadata")
@@ -17,20 +10,27 @@ public class FileMetadataEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "filename", nullable = false, unique = true, length = 255)
+    @Column(name = "filename", nullable = false, length = 255)
     private String filename;
+
+    @Column(name = "stored_filename", nullable = false, unique = true, length = 255)
+    private String storedFilename;
 
     @ManyToOne
     @JoinColumn(name = "todo_id")
     @JsonBackReference
     private ToDoEntity todo;
 
-    public FileMetadataEntity(Long id, String filename) {
-        this.id = id;
-        this.filename = filename;
+    public FileMetadataEntity() {
     }
 
-    public FileMetadataEntity() {
+    public FileMetadataEntity(Long id, String filename, ToDoEntity todo) {
+        this.id = id;
+        this.filename = filename;
+        this.todo = todo;
+        if (this.storedFilename == null && filename != null) {
+            this.storedFilename = java.util.UUID.randomUUID().toString() + "_" + filename;
+        }
     }
 
     public Long getId() {
@@ -47,6 +47,17 @@ public class FileMetadataEntity {
 
     public void setFilename(String filename) {
         this.filename = filename;
+        if (this.storedFilename == null && filename != null) {
+            this.storedFilename = java.util.UUID.randomUUID().toString() + "_" + filename;
+        }
+    }
+
+    public String getStoredFilename() {
+        return storedFilename;
+    }
+
+    public void setStoredFilename(String storedFilename) {
+        this.storedFilename = storedFilename;
     }
 
     public ToDoEntity getTodo() {
@@ -62,9 +73,8 @@ public class FileMetadataEntity {
         return "FileMetadataEntity{" +
                 "id=" + id +
                 ", filename='" + filename + '\'' +
+                ", storedFilename='" + storedFilename + '\'' +
                 ", todoId=" + (todo != null ? todo.getId() : null) +
                 '}';
     }
-
 }
-

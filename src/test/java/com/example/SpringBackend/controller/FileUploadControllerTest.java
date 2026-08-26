@@ -1,6 +1,7 @@
 package com.example.SpringBackend.controller;
 
 import com.example.SpringBackend.exception.StorageFileNotFoundException;
+import com.example.SpringBackend.model.FileMetadataEntity;
 import com.example.SpringBackend.service.FileSystemStorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.pattern.PathPatternParser;
 
 import java.util.Collections;
 
@@ -37,14 +39,13 @@ class FileUploadControllerTest {
     @BeforeEach
     void setUp() {
         this.storageService = Mockito.mock(FileSystemStorageService.class);
-
         this.fileUploadController = new FileUploadController((FileSystemStorageService) this.storageService);
 
         this.mockMvc = MockMvcBuilders.standaloneSetup(fileUploadController)
                 .setControllerAdvice(fileUploadController)
+                .setPatternParser(new PathPatternParser())
                 .build();
     }
-
 
     @Test
     void shouldListAllFiles() throws Exception {
@@ -79,6 +80,15 @@ class FileUploadControllerTest {
     }
 
     @Test
+    void getFileInfo_InvalidNonNumericId_ReturnsNotFound() throws Exception {
+        mockMvc.perform(get("/files/abc")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+
+        Mockito.verifyNoInteractions(storageService);
+    }
+
+    @Test
     void shouldHandleFileUpload() throws Exception {
         MockMultipartFile mockFile1 = new MockMultipartFile(
                 "files",
@@ -92,13 +102,14 @@ class FileUploadControllerTest {
                 "text/plain",
                 "hello world 2".getBytes()
         );
+
         mockMvc.perform(multipart("/api/files")
                         .file(mockFile1)
                         .file(mockFile2)
                         .param("todoId", "1"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/api/files"))
-                .andExpect(flash().attribute("message", "You successfully uploaded 2 files!"));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.message").value("Successfully uploaded 2 files!"))
+                .andExpect(jsonPath("$.todoId").value(1));
 
         Mockito.verify(storageService, Mockito.times(1))
                 .store(Mockito.any(MultipartFile[].class), Mockito.eq(1L));

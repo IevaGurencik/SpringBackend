@@ -20,17 +20,20 @@ import com.example.SpringBackend.controller.FileUploadController;
 import com.example.SpringBackend.model.FileMetadataEntity;
 import com.example.SpringBackend.model.ToDoEntity;
 import com.example.SpringBackend.repository.StorageRepository;
-
 import com.example.SpringBackend.repository.ToDoRepository;
+
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.FileSystemUtils;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
 @Service
 public class FileSystemStorageService {
+
     private final StorageRepository storageRepository;
     private final ToDoRepository todoRepository;
     private final Path rootLocation;
@@ -46,34 +49,35 @@ public class FileSystemStorageService {
         this.todoRepository = todoRepository;
     }
 
+    @Transactional
     public void store(MultipartFile[] files, Long todoId) {
         if (files == null || files.length == 0) {
             throw new StorageException("No files provided for upload.");
         }
-
-        ToDoEntity todo = new ToDoEntity();
-        todo.setId(todoId);
+        ToDoEntity todo = todoRepository.findById(todoId)
+                .orElseThrow(() -> new StorageException("Cannot upload files. ToDo not found with id: " + todoId));
 
         Arrays.stream(files)
                 .filter(file -> !file.isEmpty())
                 .forEach(file -> {
-                    this.store(file);
-
+                    String cleanFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+                    this.storeFileToDisk(file, cleanFilename);
                     FileMetadataEntity metadata = new FileMetadataEntity();
-                    metadata.setFilename(file.getOriginalFilename());
+                    metadata.setFilename(cleanFilename);
                     metadata.setTodo(todo);
 
                     storageRepository.save(metadata);
                 });
     }
 
-    public void store(MultipartFile file) {
-        if (file.isEmpty()) {
-            throw new StorageException("Failed to store empty file.");
-        }
+    public FileMetadataEntity findMetadataById(Long id) {
+        return storageRepository.findById(id)
+                .orElseThrow(() -> new StorageFileNotFoundException("File metadata not found with id: " + id));
+    }
+
+    private void storeFileToDisk(MultipartFile file, String filename) {
         try {
-            Path destinationFile = this.rootLocation.resolve(
-                            Paths.get(Objects.requireNonNull(file.getOriginalFilename())))
+            Path destinationFile = this.rootLocation.resolve(Paths.get(filename))
                     .normalize().toAbsolutePath();
 
             if (!destinationFile.getParent().equals(this.rootLocation.toAbsolutePath())) {
@@ -83,8 +87,16 @@ public class FileSystemStorageService {
                 Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException e) {
-            throw new StorageException("Failed to store file.", e);
+            throw new StorageException("Failed to store file " + filename, e);
         }
+    }
+
+    public void store(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new StorageException("Failed to store empty file.");
+        }
+        String cleanFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+        this.storeFileToDisk(file, cleanFilename);
     }
 
     public Stream<Path> loadAll() {
