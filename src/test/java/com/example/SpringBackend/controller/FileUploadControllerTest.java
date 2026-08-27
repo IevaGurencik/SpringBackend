@@ -1,7 +1,6 @@
 package com.example.SpringBackend.controller;
 
 import com.example.SpringBackend.exception.StorageFileNotFoundException;
-import com.example.SpringBackend.model.FileMetadataEntity;
 import com.example.SpringBackend.service.FileSystemStorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -123,4 +122,5 @@ class FileUploadControllerTest {
         mockMvc.perform(get("/api/files/missing.txt"))
                 .andExpect(status().isNotFound());
     }
+
 }

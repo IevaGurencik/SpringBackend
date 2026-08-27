@@ -111,4 +111,72 @@ class FileUploadServiceTest {
                 .isInstanceOf(StorageFileNotFoundException.class)
                 .hasMessageContaining("Could not read file: non-existent.txt");
     }
+    @Test
+    void shouldSaveMultipleFilesAndAssignToTodo() throws IOException {
+        com.example.SpringBackend.model.ToDoEntity mockTodo = new com.example.SpringBackend.model.ToDoEntity();
+        org.mockito.Mockito.when(todoRepository.findById(1L)).thenReturn(java.util.Optional.of(mockTodo));
+
+        MockMultipartFile file1 = new MockMultipartFile("files", "doc1.pdf", "application/pdf", "pdf data".getBytes());
+        MockMultipartFile file2 = new MockMultipartFile("files", "img2.png", "image/png", "png data".getBytes());
+        org.springframework.web.multipart.MultipartFile[] filesArray = new org.springframework.web.multipart.MultipartFile[]{file1, file2};
+
+        storageService.store(filesArray, 1L);
+
+        org.mockito.Mockito.verify(storageRepository, org.mockito.Mockito.times(2))
+                .save(org.mockito.Mockito.any(com.example.SpringBackend.model.FileMetadataEntity.class));
+
+        long createdFilesCount = Files.walk(sharedTempDir, 1)
+                .filter(path -> !path.equals(sharedTempDir))
+                .count();
+        assertThat(createdFilesCount).isEqualTo(2);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenTodoNotFoundOnUpload() {
+        org.mockito.Mockito.when(todoRepository.findById(99L)).thenReturn(java.util.Optional.empty());
+        org.springframework.web.multipart.MultipartFile[] emptyArray = new org.springframework.web.multipart.MultipartFile[]{
+                new MockMultipartFile("files", "test.txt", "text/plain", "data".getBytes())
+        };
+
+        assertThatThrownBy(() -> storageService.store(emptyArray, 99L))
+                .isInstanceOf(StorageException.class)
+                .hasMessageContaining("Cannot upload files. ToDo not found with id: 99");
+
+        org.mockito.Mockito.verify(storageRepository, org.mockito.Mockito.never()).save(org.mockito.Mockito.any());
+    }
+
+    @Test
+    void shouldLoadAsResponseByMetadataId_Success() throws IOException {
+        Long metadataId = 1L;
+        String fakeUuidName = "generated-uuid-name.txt";
+
+        Files.writeString(sharedTempDir.resolve(fakeUuidName), "file content inside uuid");
+
+        com.example.SpringBackend.model.FileMetadataEntity metadata = new com.example.SpringBackend.model.FileMetadataEntity();
+        metadata.setFilename("user-original-name.txt");
+        metadata.setStoredFilename(fakeUuidName);
+
+        org.mockito.Mockito.when(storageRepository.findById(metadataId)).thenReturn(java.util.Optional.of(metadata));
+
+        java.util.Map<String, Object> response = storageService.loadAsResponseByMetadataId(metadataId);
+
+        assertThat(response).isNotNull();
+        assertThat(response.get("filename")).isEqualTo("user-original-name.txt");
+        assertThat(response.get("contentType")).isEqualTo("text/plain");
+
+        org.springframework.core.io.Resource resource = (org.springframework.core.io.Resource) response.get("resource");
+        assertThat(resource.exists()).isTrue();
+        assertThat(resource.isReadable()).isTrue();
+    }
+
+    @Test
+    void shouldThrow404WhenMetadataIdDoesNotExistInDb() {
+        Long fakeId = 555L;
+        org.mockito.Mockito.when(storageRepository.findById(fakeId)).thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> storageService.loadAsResponseByMetadataId(fakeId))
+                .isInstanceOf(StorageFileNotFoundException.class)
+                .hasMessageContaining("File metadata not found with id: 555");
+    }
+
 }

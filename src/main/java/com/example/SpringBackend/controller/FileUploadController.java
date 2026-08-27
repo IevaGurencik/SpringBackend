@@ -50,6 +50,20 @@ public class FileUploadController {
                 .body(file);
     }
 
+    @GetMapping("/files/{id}")
+    public ResponseEntity<Resource> serveFileById(@PathVariable Long id) {
+        java.util.Map<String, Object> fileResponse = storageService.loadAsResponseByMetadataId(id);
+
+        Resource resource = (Resource) fileResponse.get("resource");
+        String filename = (String) fileResponse.get("filename");
+        String contentType = (String) fileResponse.get("contentType");
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType(contentType))
+                .body(resource);
+    }
+
     @PostMapping("/files")
     public ResponseEntity<?> handleFileUpload(@RequestParam("files") MultipartFile[] files,
                                               @RequestParam("todoId") Long todoId) {

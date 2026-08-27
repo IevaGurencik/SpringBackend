@@ -10,6 +10,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -60,10 +61,15 @@ public class FileSystemStorageService {
         Arrays.stream(files)
                 .filter(file -> !file.isEmpty())
                 .forEach(file -> {
-                    String cleanFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-                    this.storeFileToDisk(file, cleanFilename);
+                    String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+
+                    String fileExtension = StringUtils.getFilenameExtension(originalFilename);
+                    String storedFilename = UUID.randomUUID().toString() + (fileExtension != null ? "." + fileExtension : "");
+                    this.storeFileToDisk(file, storedFilename);
+
                     FileMetadataEntity metadata = new FileMetadataEntity();
-                    metadata.setFilename(cleanFilename);
+                    metadata.setFilename(originalFilename);
+                    metadata.setStoredFilename(storedFilename);
                     metadata.setTodo(todo);
 
                     storageRepository.save(metadata);
@@ -95,8 +101,8 @@ public class FileSystemStorageService {
         if (file.isEmpty()) {
             throw new StorageException("Failed to store empty file.");
         }
-        String cleanFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-        this.storeFileToDisk(file, cleanFilename);
+        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+        this.storeFileToDisk(file, originalFilename);
     }
 
     public Stream<Path> loadAll() {
@@ -124,6 +130,29 @@ public class FileSystemStorageService {
 
     public Path load(String filename) {
         return rootLocation.resolve(filename);
+    }
+
+    public java.util.Map<String, Object> loadAsResponseByMetadataId(Long id) {
+        FileMetadataEntity metadata = storageRepository.findById(id)
+                .orElseThrow(() -> new StorageFileNotFoundException("File metadata not found with id: " + id));
+
+        Resource resource = loadAsResource(metadata.getStoredFilename());
+
+        String contentType = "application/octet-stream";
+        try {
+            contentType = Files.probeContentType(resource.getFile().toPath());
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+        } catch (IOException e) {
+
+        }
+
+        return java.util.Map.of(
+                "resource", resource,
+                "filename", metadata.getFilename(),
+                "contentType", contentType
+        );
     }
 
     public Resource loadAsResource(String filename) {
