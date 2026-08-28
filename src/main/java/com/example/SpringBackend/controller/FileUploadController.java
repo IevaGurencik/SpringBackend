@@ -50,7 +50,7 @@ public class FileUploadController {
                 .body(file);
     }
 
-    @GetMapping("/files/{id}")
+    @GetMapping("/files/id/{id}")
     public ResponseEntity<Resource> serveFileById(@PathVariable Long id) {
         java.util.Map<String, Object> fileResponse = storageService.loadAsResponseByMetadataId(id);
 
