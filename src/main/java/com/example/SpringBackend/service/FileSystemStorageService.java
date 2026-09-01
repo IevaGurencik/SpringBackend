@@ -132,29 +132,6 @@ public class FileSystemStorageService {
         return rootLocation.resolve(filename);
     }
 
-    public java.util.Map<String, Object> loadAsResponseByMetadataId(Long id) {
-        FileMetadataEntity metadata = storageRepository.findById(id)
-                .orElseThrow(() -> new StorageFileNotFoundException("File metadata not found with id: " + id));
-
-        Resource resource = loadAsResource(metadata.getStoredFilename());
-
-        String contentType = "application/octet-stream";
-        try {
-            contentType = Files.probeContentType(resource.getFile().toPath());
-            if (contentType == null) {
-                contentType = "application/octet-stream";
-            }
-        } catch (IOException e) {
-
-        }
-
-        return java.util.Map.of(
-                "resource", resource,
-                "filename", metadata.getFilename(),
-                "contentType", contentType
-        );
-    }
-
     public Resource loadAsResource(String filename) {
         try {
             Path file = load(filename);
@@ -170,6 +147,39 @@ public class FileSystemStorageService {
         }
     }
 
+    public java.util.Map<String, Object> loadResponseByFilename(String filename) {
+        Resource resource = loadAsResource(filename);
+        String contentType = determineContentType(load(filename));
+
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("resource", resource);
+        response.put("filename", resource.getFilename() != null ? resource.getFilename() : "file");
+        response.put("contentType", contentType);
+        return response;
+    }
+
+    public java.util.Map<String, Object> loadResponseByMetadataId(Long id) {
+        FileMetadataEntity metadata = storageRepository.findById(id)
+                .orElseThrow(() -> new StorageFileNotFoundException("File metadata not found with id: " + id));
+
+        Resource resource = loadAsResource(metadata.getStoredFilename());
+        String contentType = determineContentType(load(metadata.getStoredFilename()));
+
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("resource", resource);
+        response.put("filename", metadata.getFilename() != null ? metadata.getFilename() : "file");
+        response.put("contentType", contentType);
+        return response;
+    }
+    private String determineContentType(Path path) {
+        try {
+            String contentType = Files.probeContentType(path);
+            return contentType != null ? contentType : "application/octet-stream";
+        } catch (IOException e) {
+            return "application/octet-stream";
+        }
+    }
+
     public void deleteAll() {
         FileSystemUtils.deleteRecursively(rootLocation.toFile());
     }
@@ -178,7 +188,7 @@ public class FileSystemStorageService {
         try {
             Files.createDirectories(rootLocation);
         } catch (IOException e) {
-            throw new StorageException("Could not initialize storage", e);
+            throw new StorageException("Could not initialize storage location", e);
         }
     }
 }

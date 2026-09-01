@@ -11,8 +11,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
 
@@ -36,32 +34,22 @@ public class FileUploadController {
 
     @GetMapping("/files/{filename:.+}")
     public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
-        Resource file = storageService.loadAsResource(filename);
-        String contentType = "application/octet-stream";
-        try {
-            contentType = Files.probeContentType(file.getFile().toPath());
-        } catch (IOException e) {
-
-        }
+        Map<String, Object> fileResponse = storageService.loadResponseByFilename(filename);
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getFilename() + "\"")
-                .contentType(MediaType.parseMediaType(contentType))
-                .body(file);
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileResponse.get("filename") + "\"")
+                .contentType(MediaType.parseMediaType((String) fileResponse.get("contentType")))
+                .body((Resource) fileResponse.get("resource"));
     }
 
-    @GetMapping("/files/id/{id}")
+    @GetMapping(value = "/files/id/{id}")
     public ResponseEntity<Resource> serveFileById(@PathVariable Long id) {
-        java.util.Map<String, Object> fileResponse = storageService.loadAsResponseByMetadataId(id);
-
-        Resource resource = (Resource) fileResponse.get("resource");
-        String filename = (String) fileResponse.get("filename");
-        String contentType = (String) fileResponse.get("contentType");
+        Map<String, Object> fileResponse = storageService.loadResponseByMetadataId(id);
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
-                .contentType(MediaType.parseMediaType(contentType))
-                .body(resource);
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileResponse.get("filename") + "\"")
+                .contentType(MediaType.parseMediaType((String) fileResponse.get("contentType")))
+                .body((Resource) fileResponse.get("resource"));
     }
 
     @PostMapping("/files")

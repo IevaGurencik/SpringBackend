@@ -111,6 +111,7 @@ class FileUploadServiceTest {
                 .isInstanceOf(StorageFileNotFoundException.class)
                 .hasMessageContaining("Could not read file: non-existent.txt");
     }
+
     @Test
     void shouldSaveMultipleFilesAndAssignToTodo() throws IOException {
         com.example.SpringBackend.model.ToDoEntity mockTodo = new com.example.SpringBackend.model.ToDoEntity();
@@ -146,7 +147,7 @@ class FileUploadServiceTest {
     }
 
     @Test
-    void shouldLoadAsResponseByMetadataId_Success() throws IOException {
+    void shouldLoadResponseByMetadataId_Success() throws IOException {
         Long metadataId = 1L;
         String fakeUuidName = "generated-uuid-name.txt";
 
@@ -158,7 +159,7 @@ class FileUploadServiceTest {
 
         org.mockito.Mockito.when(storageRepository.findById(metadataId)).thenReturn(java.util.Optional.of(metadata));
 
-        java.util.Map<String, Object> response = storageService.loadAsResponseByMetadataId(metadataId);
+        java.util.Map<String, Object> response = storageService.loadResponseByMetadataId(metadataId);
 
         assertThat(response).isNotNull();
         assertThat(response.get("filename")).isEqualTo("user-original-name.txt");
@@ -174,9 +175,31 @@ class FileUploadServiceTest {
         Long fakeId = 555L;
         org.mockito.Mockito.when(storageRepository.findById(fakeId)).thenReturn(java.util.Optional.empty());
 
-        assertThatThrownBy(() -> storageService.loadAsResponseByMetadataId(fakeId))
+        assertThatThrownBy(() -> storageService.loadResponseByMetadataId(fakeId))
                 .isInstanceOf(StorageFileNotFoundException.class)
                 .hasMessageContaining("File metadata not found with id: 555");
     }
 
+    @Test
+    void shouldLoadResponseByFilename_Success() throws IOException {
+        String filename = "direct-file.txt";
+        Files.writeString(sharedTempDir.resolve(filename), "direct access content");
+
+        java.util.Map<String, Object> response = storageService.loadResponseByFilename(filename);
+
+        assertThat(response).isNotNull();
+        assertThat(response.get("filename")).isEqualTo(filename);
+        assertThat(response.get("contentType")).isEqualTo("text/plain");
+
+        org.springframework.core.io.Resource resource = (org.springframework.core.io.Resource) response.get("resource");
+        assertThat(resource.exists()).isTrue();
+    }
+    @Test
+    void shouldThrow404WhenFilenameDoesNotExistOnDisk() {
+        String missingFilename = "ghost-file.jpg";
+
+        assertThatThrownBy(() -> storageService.loadResponseByFilename(missingFilename))
+                .isInstanceOf(StorageFileNotFoundException.class)
+                .hasMessageContaining("Could not read file: " + missingFilename);
+    }
 }
