@@ -171,6 +171,7 @@ public class FileSystemStorageService {
         response.put("contentType", contentType);
         return response;
     }
+
     private String determineContentType(Path path) {
         try {
             String contentType = Files.probeContentType(path);

@@ -194,6 +194,7 @@ class FileUploadServiceTest {
         org.springframework.core.io.Resource resource = (org.springframework.core.io.Resource) response.get("resource");
         assertThat(resource.exists()).isTrue();
     }
+
     @Test
     void shouldThrow404WhenFilenameDoesNotExistOnDisk() {
         String missingFilename = "ghost-file.jpg";
