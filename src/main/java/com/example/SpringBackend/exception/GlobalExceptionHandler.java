@@ -1,4 +1,4 @@
-package com.example.SpringBackend.controller;
+package com.example.SpringBackend.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
