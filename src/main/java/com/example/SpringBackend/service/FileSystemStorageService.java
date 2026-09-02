@@ -185,6 +185,28 @@ public class FileSystemStorageService {
         FileSystemUtils.deleteRecursively(rootLocation.toFile());
     }
 
+    public void deleteByMetadataId(Long id) {
+        FileMetadataEntity metadata = storageRepository.findById(id)
+                .orElseThrow(() -> new StorageFileNotFoundException("Could not find file with id: " + id));
+        Path file = rootLocation.resolve(metadata.getStoredFilename());
+
+        try {
+            java.nio.file.Files.deleteIfExists(file);
+            storageRepository.delete(metadata);
+        } catch (IOException e) {
+            throw new StorageException("File deletion unsuccessful", e);
+        }
+    }
+
+    public void deletePhysicalFile(String storedFilename) {
+        try {
+            java.nio.file.Path file = rootLocation.resolve(storedFilename);
+            java.nio.file.Files.deleteIfExists(file);
+        } catch (java.io.IOException e) {
+            System.err.println("Error while deleting the file: " + storedFilename);
+        }
+    }
+
     public void init() {
         try {
             Files.createDirectories(rootLocation);

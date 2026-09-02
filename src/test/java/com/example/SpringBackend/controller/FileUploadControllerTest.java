@@ -21,6 +21,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -128,7 +134,7 @@ class FileUploadControllerTest {
                 .andExpect(jsonPath("$.message").value("Successfully uploaded 2 files!"))
                 .andExpect(jsonPath("$.todoId").value(1));
 
-        Mockito.verify(storageService, Mockito.times(1))
+        Mockito.verify(storageService, times(1))
                 .store(Mockito.any(MultipartFile[].class), Mockito.eq(1L));
     }
 
@@ -149,4 +155,32 @@ class FileUploadControllerTest {
         mockMvc.perform(get("/api/files/id/999"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void deleteFileById_ShouldReturnOk_WhenFileExists() throws Exception {
+        long fileId = 1L;
+
+        doNothing().when(storageService).deleteByMetadataId(fileId);
+
+        mockMvc.perform(delete("/api/files/id/{id}", fileId))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.message").value("File with ID " + fileId + " successfully deleted!"));
+
+        verify(storageService, times(1)).deleteByMetadataId(fileId);
+    }
+
+    @Test
+    void deleteFileById_ShouldReturnNotFound_WhenFileDoesNotExist() throws Exception {
+        long nonExistingId = 999L;
+
+        doThrow(new StorageFileNotFoundException("File not found"))
+                .when(storageService).deleteByMetadataId(nonExistingId);
+
+        mockMvc.perform(delete("/api/files/id/{id}", nonExistingId))
+                .andExpect(status().isNotFound());
+
+        verify(storageService, times(1)).deleteByMetadataId(nonExistingId);
+    }
+
 }

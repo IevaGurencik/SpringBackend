@@ -17,6 +17,8 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.mock.web.MockHttpServletRequest;
 
+import static org.mockito.Mockito.never;
+
 import com.example.SpringBackend.exception.StorageException;
 import com.example.SpringBackend.exception.StorageFileNotFoundException;
 import com.example.SpringBackend.config.StorageProperties;
@@ -25,6 +27,7 @@ import com.example.SpringBackend.repository.ToDoRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 
 @ExtendWith(MockitoExtension.class)
 class FileUploadServiceTest {
@@ -143,7 +146,7 @@ class FileUploadServiceTest {
                 .isInstanceOf(StorageException.class)
                 .hasMessageContaining("Cannot upload files. ToDo not found with id: 99");
 
-        org.mockito.Mockito.verify(storageRepository, org.mockito.Mockito.never()).save(org.mockito.Mockito.any());
+        org.mockito.Mockito.verify(storageRepository, never()).save(org.mockito.Mockito.any());
     }
 
     @Test
@@ -202,5 +205,50 @@ class FileUploadServiceTest {
         assertThatThrownBy(() -> storageService.loadResponseByFilename(missingFilename))
                 .isInstanceOf(StorageFileNotFoundException.class)
                 .hasMessageContaining("Could not read file: " + missingFilename);
+    }
+
+    @Test
+    void shouldDeleteFileByMetadataId_Success() throws IOException {
+        Long metadataId = 42L;
+        String fakeUuidName = "delete-uuid-name.txt";
+        Path physicalFile = sharedTempDir.resolve(fakeUuidName);
+        Files.writeString(physicalFile, "temporary content to be deleted");
+
+        com.example.SpringBackend.model.FileMetadataEntity metadata = new com.example.SpringBackend.model.FileMetadataEntity();
+        metadata.setId(metadataId);
+        metadata.setStoredFilename(fakeUuidName);
+
+        org.mockito.Mockito.when(storageRepository.findById(metadataId)).thenReturn(java.util.Optional.of(metadata));
+        storageService.deleteByMetadataId(metadataId);
+
+        assertThat(Files.exists(physicalFile)).isFalse();
+
+        org.mockito.Mockito.verify(storageRepository, org.mockito.Mockito.times(1))
+                .delete(org.mockito.Mockito.any(com.example.SpringBackend.model.FileMetadataEntity.class));
+    }
+
+    @Test
+    void deleteByMetadataId_ShouldThrowException_WhenIdNotFoundInDb() {
+        Long missingId = 777L;
+        org.mockito.Mockito.when(storageRepository.findById(missingId)).thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> storageService.deleteByMetadataId(missingId))
+                .isInstanceOf(StorageFileNotFoundException.class)
+                .hasMessageContaining("Could not find file with id: 777");
+
+        org.mockito.Mockito.verify(storageRepository, org.mockito.Mockito.never())
+                .delete(org.mockito.Mockito.any(com.example.SpringBackend.model.FileMetadataEntity.class));
+    }
+
+    @Test
+    void shouldDeletePhysicalFileDirectly() throws IOException {
+        String filename = "physical-target.txt";
+        Path physicalFile = sharedTempDir.resolve(filename);
+        Files.writeString(physicalFile, "content to test cascading physical file removal");
+        assertThat(Files.exists(physicalFile)).isTrue();
+
+        storageService.deletePhysicalFile(filename);
+
+        assertThat(Files.exists(physicalFile)).isFalse();
     }
 }

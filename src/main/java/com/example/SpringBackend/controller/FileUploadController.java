@@ -63,6 +63,15 @@ public class FileUploadController {
         ));
     }
 
+    @DeleteMapping("/files/id/{id}")
+    public ResponseEntity<?> deleteFileById(@PathVariable Long id) {
+        storageService.deleteByMetadataId(id);
+
+        return ResponseEntity.ok().body(Map.of(
+                "message", "File with ID " + id + " successfully deleted!"
+        ));
+    }
+
     @ExceptionHandler(StorageFileNotFoundException.class)
     public ResponseEntity<?> handleStorageFileNotFound(StorageFileNotFoundException exc) {
         return ResponseEntity.notFound().build();

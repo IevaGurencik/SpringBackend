@@ -1,7 +1,6 @@
 package com.example.SpringBackend.controller;
 
 import com.example.SpringBackend.model.ToDoEntity;
-import com.example.SpringBackend.repository.ToDoRepository;
 import com.example.SpringBackend.service.ToDoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -20,9 +19,6 @@ import java.util.List;
 @RequestMapping("/api")
 public class ToDoController {
     private final ToDoService toDoService;
-
-    @Autowired
-    private ToDoRepository todoRepository;
 
     @Autowired
     public ToDoController(ToDoService toDoService) {

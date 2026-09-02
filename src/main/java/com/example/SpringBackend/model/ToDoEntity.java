@@ -1,6 +1,7 @@
 package com.example.SpringBackend.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -22,7 +23,7 @@ public class ToDoEntity {
     @Column(name = "text", length = 255)
     private String text;
 
-    @OneToMany(mappedBy = "todo")
+    @OneToMany(mappedBy = "todo", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<FileMetadataEntity> files = new ArrayList<>();
 

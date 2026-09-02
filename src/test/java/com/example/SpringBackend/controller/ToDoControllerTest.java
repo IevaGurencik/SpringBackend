@@ -1,8 +1,8 @@
 package com.example.SpringBackend.controller;
 
 import com.example.SpringBackend.exception.GlobalExceptionHandler;
-import com.example.SpringBackend.model.FileMetadataEntity;
 import com.example.SpringBackend.model.ToDoEntity;
+import com.example.SpringBackend.model.FileMetadataEntity;
 import com.example.SpringBackend.service.ToDoService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,8 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -58,12 +57,37 @@ class ToDoControllerTest {
     }
 
     @Test
+    void findAll_EmptyList_ReturnsEmptyArray() throws Exception {
+        when(toDoService.findAll()).thenReturn(List.of());
+        mockMvc.perform(get("/api/todos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0))
+                .andExpect(content().json("[]"));
+    }
+
+    @Test
     void getToDo_ValidId_ReturnsToDo() throws Exception {
         when(toDoService.findById(1)).thenReturn(toDoEntity);
         mockMvc.perform(get("/api/todos/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.text").value("Test Text"))
                 .andExpect(jsonPath("$.files").isArray());
+    }
+
+    @Test
+    void getToDo_WithAttachedFiles_ReturnsJsonArrayWithFileMetadata() throws Exception {
+        FileMetadataEntity fileMock = new FileMetadataEntity();
+        fileMock.setId(29L);
+        fileMock.setFilename("document.pdf");
+        toDoEntity.getFiles().add(fileMock);
+
+        when(toDoService.findById(1)).thenReturn(toDoEntity);
+
+        mockMvc.perform(get("/api/todos/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.files.length()").value(1))
+                .andExpect(jsonPath("$.files[0].id").value(29))
+                .andExpect(jsonPath("$.files[0].filename").value("document.pdf"));
     }
 
     @Test
@@ -95,18 +119,22 @@ class ToDoControllerTest {
 
     @Test
     void deleteToDo_ValidId_ReturnsConfirmation() throws Exception {
-        when(toDoService.findById(1)).thenReturn(toDoEntity);
-        Mockito.doNothing().when(toDoService).deleteById(1);
+        doNothing().when(toDoService).deleteById(1);
+
         mockMvc.perform(delete("/api/todos/1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Deleted ToDoEntity id - 1"));
+
+        verify(toDoService, times(1)).deleteById(1);
     }
 
     @Test
     void deleteToDo_InvalidId_Returns404() throws Exception {
         doThrow(new RuntimeException("ToDoEntity id not found - 999")).when(toDoService).deleteById(999);
+
         mockMvc.perform(delete("/api/todos/999"))
                 .andExpect(status().isNotFound())
                 .andExpect(content().string("ToDoEntity id not found - 999"));
     }
+
 }
