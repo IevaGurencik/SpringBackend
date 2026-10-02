@@ -3,6 +3,7 @@ package com.example.SpringBackend.service;
 import com.example.SpringBackend.model.ToDoEntity;
 import com.example.SpringBackend.repository.ToDoRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -10,9 +11,11 @@ import java.util.Optional;
 @Service
 public class ToDoService {
     private final ToDoRepository toDoRepository;
+    private final FileSystemStorageService storageService;
 
-    public ToDoService(ToDoRepository toDoRepository) {
+    public ToDoService(ToDoRepository toDoRepository, FileSystemStorageService storageService) {
         this.toDoRepository = toDoRepository;
+        this.storageService = storageService;
     }
 
     public List<ToDoEntity> findAll() {
@@ -28,10 +31,17 @@ public class ToDoService {
         return toDoRepository.save(theToDosEntity);
     }
 
+    @Transactional
     public void deleteById(long id) {
-        if (!toDoRepository.existsById(id)) {
-            throw new RuntimeException("ToDoEntity id not found - " + id);
+        ToDoEntity toDoEntity = toDoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("ToDoEntity id not found - " + id));
+
+        if (toDoEntity.getFiles() != null) {
+            toDoEntity.getFiles().forEach(file -> {
+                storageService.deletePhysicalFile(file.getStoredFilename());
+            });
         }
-        toDoRepository.deleteById(id);
+
+        toDoRepository.delete(toDoEntity);
     }
 }
