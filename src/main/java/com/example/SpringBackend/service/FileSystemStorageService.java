@@ -1,36 +1,38 @@
 package com.example.SpringBackend.service;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
+import com.example.SpringBackend.config.StorageProperties;
 import com.example.SpringBackend.exception.StorageException;
 import com.example.SpringBackend.exception.StorageFileNotFoundException;
-import com.example.SpringBackend.config.StorageProperties;
-import com.example.SpringBackend.controller.FileUploadController;
 import com.example.SpringBackend.model.FileMetadataEntity;
 import com.example.SpringBackend.model.ToDoEntity;
 import com.example.SpringBackend.repository.StorageRepository;
 import com.example.SpringBackend.repository.ToDoRepository;
-
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.nio.file.*;
+import java.time.Duration;
+import java.util.*;
+import java.util.stream.Stream;
 
 @Service
 public class FileSystemStorageService {
@@ -38,6 +40,15 @@ public class FileSystemStorageService {
     private final StorageRepository storageRepository;
     private final ToDoRepository todoRepository;
     private final Path rootLocation;
+
+    @Autowired(required = false)
+    private S3Client s3Client;
+
+    @Autowired(required = false)
+    private S3Presigner s3Presigner;
+
+    @Value("${storage.bucket-name:}")
+    private String bucketName;
 
     public FileSystemStorageService(StorageProperties properties,
                                     StorageRepository storageRepository,
@@ -48,6 +59,14 @@ public class FileSystemStorageService {
         this.rootLocation = Paths.get(properties.getLocation());
         this.storageRepository = storageRepository;
         this.todoRepository = todoRepository;
+    }
+
+    public void init() {
+        try {
+            Files.createDirectories(rootLocation);
+        } catch (IOException e) {
+            throw new StorageException("Could not initialize storage", e);
+        }
     }
 
     @Transactional
@@ -62,10 +81,14 @@ public class FileSystemStorageService {
                 .filter(file -> !file.isEmpty())
                 .forEach(file -> {
                     String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-
                     String fileExtension = StringUtils.getFilenameExtension(originalFilename);
                     String storedFilename = UUID.randomUUID().toString() + (fileExtension != null ? "." + fileExtension : "");
-                    this.storeFileToDisk(file, storedFilename);
+
+                    if (s3Client != null && !bucketName.isEmpty()) {
+                        this.uploadToS3(file, storedFilename);
+                    } else {
+                        this.storeFileToDisk(file, storedFilename);
+                    }
 
                     FileMetadataEntity metadata = new FileMetadataEntity();
                     metadata.setFilename(originalFilename);
@@ -76,16 +99,22 @@ public class FileSystemStorageService {
                 });
     }
 
-    public FileMetadataEntity findMetadataById(Long id) {
-        return storageRepository.findById(id)
-                .orElseThrow(() -> new StorageFileNotFoundException("File metadata not found with id: " + id));
+    private void uploadToS3(MultipartFile file, String s3Key) {
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(s3Key)
+                    .contentType(file.getContentType())
+                    .build();
+            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+        } catch (IOException e) {
+            throw new StorageException("Failed to upload file to S3: " + s3Key, e);
+        }
     }
 
     private void storeFileToDisk(MultipartFile file, String filename) {
         try {
-            Path destinationFile = this.rootLocation.resolve(Paths.get(filename))
-                    .normalize().toAbsolutePath();
-
+            Path destinationFile = this.rootLocation.resolve(Paths.get(filename)).normalize().toAbsolutePath();
             if (!destinationFile.getParent().equals(this.rootLocation.toAbsolutePath())) {
                 throw new StorageException("Cannot store file outside current directory.");
             }
@@ -102,7 +131,20 @@ public class FileSystemStorageService {
             throw new StorageException("Failed to store empty file.");
         }
         String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-        this.storeFileToDisk(file, originalFilename);
+        if (s3Client != null && !bucketName.isEmpty()) {
+            this.uploadToS3(file, originalFilename);
+        } else {
+            this.storeFileToDisk(file, originalFilename);
+        }
+    }
+
+    public FileMetadataEntity findMetadataById(Long id) {
+        return storageRepository.findById(id)
+                .orElseThrow(() -> new StorageFileNotFoundException("Metadata not found"));
+    }
+
+    public Path load(String filename) {
+        return rootLocation.resolve(filename);
     }
 
     public Stream<Path> loadAll() {
@@ -116,27 +158,20 @@ public class FileSystemStorageService {
     }
 
     public List<String> loadAllDownloadUrls() {
-        try {
-            return Files.walk(this.rootLocation, 1)
-                    .filter(path -> !path.equals(this.rootLocation))
-                    .map(this.rootLocation::relativize)
-                    .map(path -> MvcUriComponentsBuilder.fromMethodName(FileUploadController.class,
-                            "serveFile", path.getFileName().toString()).build().toUri().toString())
-                    .collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new StorageException("Failed to generate download URLs", e);
-        }
-    }
-
-    public Path load(String filename) {
-        return rootLocation.resolve(filename);
+        return storageRepository.findAll().stream()
+                .map(metadata -> "/api/files/id/" + metadata.getId())
+                .toList();
     }
 
     public Resource loadAsResource(String filename) {
         try {
+            if (s3Client != null && s3Presigner != null) {
+                String presignedUrl = generatePresignedUrl(filename);
+                return new UrlResource(presignedUrl);
+            }
+
             Path file = load(filename);
             Resource resource = new UrlResource(file.toUri());
-
             if (resource.exists() || resource.isReadable()) {
                 return resource;
             } else {
@@ -147,71 +182,89 @@ public class FileSystemStorageService {
         }
     }
 
-    public java.util.Map<String, Object> loadResponseByFilename(String filename) {
-        Resource resource = loadAsResource(filename);
-        String contentType = determineContentType(load(filename));
-
-        java.util.Map<String, Object> response = new java.util.HashMap<>();
-        response.put("resource", resource);
-        response.put("filename", resource.getFilename() != null ? resource.getFilename() : "file");
-        response.put("contentType", contentType);
-        return response;
+    private String generatePresignedUrl(String key) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucketName).key(key).build();
+        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(15))
+                .getObjectRequest(getObjectRequest).build();
+        return s3Presigner.presignGetObject(presignRequest).url().toString();
     }
 
-    public java.util.Map<String, Object> loadResponseByMetadataId(Long id) {
+    public Map<String, Object> loadResponseByFilename(String filename) {
+        Resource resource = loadAsResource(filename);
+        String contentType = detectContentType(resource);
+
+        return Map.of(
+                "filename", filename,
+                "resource", resource,
+                "contentType", contentType
+        );
+    }
+
+    public Map<String, Object> loadResponseByMetadataId(Long id) {
         FileMetadataEntity metadata = storageRepository.findById(id)
-                .orElseThrow(() -> new StorageFileNotFoundException("File metadata not found with id: " + id));
+                .orElseThrow(() -> new StorageFileNotFoundException("Could not find file with id: " + id));
 
         Resource resource = loadAsResource(metadata.getStoredFilename());
-        String contentType = determineContentType(load(metadata.getStoredFilename()));
+        String contentType = detectContentType(resource);
 
-        java.util.Map<String, Object> response = new java.util.HashMap<>();
-        response.put("resource", resource);
-        response.put("filename", metadata.getFilename() != null ? metadata.getFilename() : "file");
-        response.put("contentType", contentType);
-        return response;
+        return Map.of(
+                "filename", metadata.getFilename(),
+                "resource", resource,
+                "contentType", contentType
+        );
     }
 
-    private String determineContentType(Path path) {
+    private String detectContentType(Resource resource) {
         try {
-            String contentType = Files.probeContentType(path);
-            return contentType != null ? contentType : "application/octet-stream";
-        } catch (IOException e) {
-            return "application/octet-stream";
+            String contentType = Files.probeContentType(resource.getFile().toPath());
+            if (contentType != null) {
+                return contentType;
+            }
+        } catch (Exception e) {
+
         }
+        return "application/octet-stream";
     }
 
-    public void deleteAll() {
-        FileSystemUtils.deleteRecursively(rootLocation.toFile());
-    }
-
+    @Transactional
     public void deleteByMetadataId(Long id) {
         FileMetadataEntity metadata = storageRepository.findById(id)
                 .orElseThrow(() -> new StorageFileNotFoundException("Could not find file with id: " + id));
-        Path file = rootLocation.resolve(metadata.getStoredFilename());
 
-        try {
-            java.nio.file.Files.deleteIfExists(file);
-            storageRepository.delete(metadata);
-        } catch (IOException e) {
-            throw new StorageException("File deletion unsuccessful", e);
+        String storedFilename = metadata.getStoredFilename();
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    executePhysicalDeletion(storedFilename);
+                }
+            });
+        } else {
+            executePhysicalDeletion(storedFilename);
+        }
+        storageRepository.delete(metadata);
+    }
+    private void executePhysicalDeletion(String storedFilename) {
+        if (s3Client != null && !bucketName.isEmpty()) {
+            DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(storedFilename)
+                    .build();
+            s3Client.deleteObject(deleteRequest);
+        } else {
+            Path file = rootLocation.resolve(storedFilename);
+            try {
+                Files.deleteIfExists(file);
+            } catch (IOException e) {
+                throw new StorageException("Failed to delete local file: " + storedFilename, e);
+            }
         }
     }
-
-    public void deletePhysicalFile(String storedFilename) {
-        try {
-            java.nio.file.Path file = rootLocation.resolve(storedFilename);
-            java.nio.file.Files.deleteIfExists(file);
-        } catch (java.io.IOException e) {
-            System.err.println("Error while deleting the file: " + storedFilename);
-        }
-    }
-
-    public void init() {
-        try {
-            Files.createDirectories(rootLocation);
-        } catch (IOException e) {
-            throw new StorageException("Could not initialize storage location", e);
+    public void deleteAll() {
+        if (s3Client == null) {
+            FileSystemUtils.deleteRecursively(rootLocation.toFile());
         }
     }
 }

@@ -35,10 +35,9 @@ public class ToDoService {
     public void deleteById(long id) {
         ToDoEntity toDoEntity = toDoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("ToDoEntity id not found - " + id));
-
         if (toDoEntity.getFiles() != null) {
             toDoEntity.getFiles().forEach(file -> {
-                storageService.deletePhysicalFile(file.getStoredFilename());
+                storageService.deleteByMetadataId(file.getId());
             });
         }
 

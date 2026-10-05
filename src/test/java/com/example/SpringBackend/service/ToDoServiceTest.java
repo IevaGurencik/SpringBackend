@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -93,15 +93,25 @@ class ToDoServiceTest {
 
         verify(toDoRepository, times(1)).findById(1L);
         verify(toDoRepository, never()).delete(any(ToDoEntity.class));
-        verify(storageService, never()).deletePhysicalFile(anyString());
+        verify(storageService, never()).deleteByMetadataId(anyLong());
     }
 
     @Test
     void deleteById_ShouldDeleteTodoAndItsPhysicalFiles() {
         long todoId = 1L;
+        long mockMetadataId = 100L;
+
+        FileMetadataEntity fileMetadata = new FileMetadataEntity();
+        fileMetadata.setId(mockMetadataId);
+        fileMetadata.setStoredFilename("14828b72-3a4e-4db4-862e-15560d7a4788.txt");
+
+        sampleToDoEntity.setFiles(List.of(fileMetadata));
+
         when(toDoRepository.findById(todoId)).thenReturn(Optional.of(sampleToDoEntity));
+
         toDoService.deleteById(todoId);
-        verify(storageService, times(1)).deletePhysicalFile("14828b72-3a4e-4db4-862e-15560d7a4788.txt");
+
+        verify(storageService, times(1)).deleteByMetadataId(mockMetadataId);
         verify(toDoRepository, times(1)).delete(sampleToDoEntity);
     }
 
@@ -113,7 +123,7 @@ class ToDoServiceTest {
 
         toDoService.deleteById(todoId);
 
-        verify(storageService, never()).deletePhysicalFile(anyString());
+        verify(storageService, never()).deleteByMetadataId(anyLong());
         verify(toDoRepository, times(1)).delete(sampleToDoEntity);
     }
 
@@ -127,8 +137,7 @@ class ToDoServiceTest {
         });
 
         assertEquals("ToDoEntity id not found - " + nonExistingId, exception.getMessage());
-
-        verify(storageService, never()).deletePhysicalFile(anyString());
+        verify(storageService, never()).deleteByMetadataId(anyLong());
         verify(toDoRepository, never()).delete(any(ToDoEntity.class));
     }
 
