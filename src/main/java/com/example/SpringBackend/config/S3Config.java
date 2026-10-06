@@ -20,8 +20,7 @@ public class S3Config {
     @Value("${aws.s3.secret-key}")
     private String secretKey;
 
-    @Value("${aws.s3.region}")
-    private String region;
+    private final String region = "eu-north-1";
 
     @Bean
     public S3Client s3Client() {
