@@ -37,7 +37,7 @@ class ToDoServiceTest {
     private FileMetadataEntity sampleFile;
 
     @Mock
-    private FileSystemStorageService storageService;
+    private FileLocalStorageService storageService;
 
     @BeforeEach
     void setUp() {

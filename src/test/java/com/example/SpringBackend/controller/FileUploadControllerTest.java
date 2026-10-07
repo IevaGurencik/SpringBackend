@@ -1,7 +1,7 @@
 package com.example.SpringBackend.controller;
 
 import com.example.SpringBackend.exception.StorageFileNotFoundException;
-import com.example.SpringBackend.service.FileSystemStorageService;
+import com.example.SpringBackend.service.FileLocalStorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +37,7 @@ class FileUploadControllerTest {
     private MockMvc mockMvc;
 
     @Mock
-    private FileSystemStorageService storageService;
+    private FileLocalStorageService storageService;
 
     @InjectMocks
     private FileUploadController fileUploadController;

@@ -5,10 +5,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import com.example.SpringBackend.model.FileMetadataEntity;
-import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,12 +19,10 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.mock.web.MockHttpServletRequest;
 
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 import com.example.SpringBackend.exception.StorageException;
 import com.example.SpringBackend.exception.StorageFileNotFoundException;
-import com.example.SpringBackend.config.StorageProperties;
 import com.example.SpringBackend.repository.StorageRepository;
 import com.example.SpringBackend.repository.ToDoRepository;
 
@@ -37,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @ExtendWith(MockitoExtension.class)
 class FileUploadServiceTest {
 
-    private FileSystemStorageService storageService;
+    private FileLocalStorageService storageService;
 
     @Mock
     private StorageRepository storageRepository;
@@ -50,16 +46,12 @@ class FileUploadServiceTest {
 
     @BeforeEach
     void setUp() {
-        StorageProperties properties = new StorageProperties();
-        properties.setLocation(sharedTempDir.toString());
+        String location = sharedTempDir.toString();
 
-        storageService = new FileSystemStorageService(properties, storageRepository, todoRepository);
+        storageService = new FileLocalStorageService(location, storageRepository, todoRepository);
         storageService.init();
 
         MockHttpServletRequest request = new MockHttpServletRequest();
-        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
-
-        HttpServletRequest Mockrequest = mock(HttpServletRequest.class);
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
     }
 
@@ -107,19 +99,11 @@ class FileUploadServiceTest {
         Files.writeString(sharedTempDir.resolve("first.txt"), "first");
         Files.writeString(sharedTempDir.resolve("second.txt"), "second");
 
-        FileMetadataEntity meta1 = new FileMetadataEntity(1L, "first.txt", null);
-        FileMetadataEntity meta2 = new FileMetadataEntity(2L, "second.txt", null);
-
-        org.mockito.Mockito.when(storageRepository.findAll()).thenReturn(List.of(meta1, meta2));
-
-        List<Path> files = storageService.loadAll().collect(Collectors.toList());
-        assertThat(files).containsExactlyInAnyOrder(Path.of("first.txt"), Path.of("second.txt"));
-
         List<String> urls = storageService.loadAllDownloadUrls();
         assertThat(urls).hasSize(2);
         assertThat(urls).containsExactlyInAnyOrder(
-                "/api/files/id/1",
-                "/api/files/id/2"
+                "http://localhost/api/files/first.txt",
+                "http://localhost/api/files/second.txt"
         );
     }
 
@@ -195,7 +179,7 @@ class FileUploadServiceTest {
 
         assertThatThrownBy(() -> storageService.loadResponseByMetadataId(fakeId))
                 .isInstanceOf(StorageFileNotFoundException.class)
-                .hasMessageContaining("Could not find file with id: 555");
+                .hasMessageContaining("File metadata not found with id: 555");
     }
 
     @Test

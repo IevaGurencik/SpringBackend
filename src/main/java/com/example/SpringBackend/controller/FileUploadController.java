@@ -1,7 +1,7 @@
 package com.example.SpringBackend.controller;
 
 import com.example.SpringBackend.exception.StorageFileNotFoundException;
-import com.example.SpringBackend.service.FileSystemStorageService;
+import com.example.SpringBackend.service.StorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -18,10 +18,10 @@ import java.util.Map;
 @RequestMapping("/api")
 public class FileUploadController {
 
-    private final FileSystemStorageService storageService;
+    private final StorageService storageService;
 
     @Autowired
-    public FileUploadController(FileSystemStorageService storageService) {
+    public FileUploadController(StorageService storageService) {
         this.storageService = storageService;
     }
 

@@ -11,9 +11,9 @@ import java.util.Optional;
 @Service
 public class ToDoService {
     private final ToDoRepository toDoRepository;
-    private final FileSystemStorageService storageService;
+    private final StorageService storageService;
 
-    public ToDoService(ToDoRepository toDoRepository, FileSystemStorageService storageService) {
+    public ToDoService(ToDoRepository toDoRepository, StorageService storageService) {
         this.toDoRepository = toDoRepository;
         this.storageService = storageService;
     }
@@ -35,6 +35,7 @@ public class ToDoService {
     public void deleteById(long id) {
         ToDoEntity toDoEntity = toDoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("ToDoEntity id not found - " + id));
+
         if (toDoEntity.getFiles() != null) {
             toDoEntity.getFiles().forEach(file -> {
                 storageService.deleteByMetadataId(file.getId());
