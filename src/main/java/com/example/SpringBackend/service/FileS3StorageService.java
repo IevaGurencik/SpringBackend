@@ -38,7 +38,7 @@ public class FileS3StorageService implements StorageService {
                                 ToDoRepository todoRepository,
                                 S3Client s3Client,
                                 S3Presigner s3Presigner,
-                                @Value("${aws.s3.bucket}") String bucketName) {
+                                @Value("${aws.s3.bucket-name}") String bucketName) {
         if (bucketName == null || bucketName.trim().isEmpty()) {
             throw new StorageException("S3 Bucket name cannot be empty.");
         }
